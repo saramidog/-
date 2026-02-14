@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>在庫発注メモ</title>
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --danger: #dc2626;
+    --danger-hover: #b91c1c;
+    --success: #16a34a;
+    --success-hover: #15803d;
+    --warning: #f59e0b;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --level-high: #22c55e;
+    --level-mid: #f59e0b;
+    --level-low: #ef4444;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  header {
+    background: var(--primary);
+    color: #fff;
+    padding: 16px 24px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+
+  header h1 {
+    font-size: 1.3rem;
+    font-weight: 700;
+  }
+
+  .tabs {
+    display: flex;
+    background: var(--card);
+    border-bottom: 2px solid var(--border);
+    overflow-x: auto;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 12px 8px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  .tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    background: #eff6ff;
+  }
+
+  .tab:hover:not(.active) {
+    background: #f1f5f9;
+  }
+
+  .tab .badge {
+    display: inline-block;
+    background: var(--danger);
+    color: #fff;
+    font-size: 0.7rem;
+    padding: 1px 6px;
+    border-radius: 10px;
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+
+  main {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .card-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .level-bar-container {
+    background: #e2e8f0;
+    border-radius: 6px;
+    height: 10px;
+    width: 100%;
+    overflow: hidden;
+    margin: 6px 0;
+  }
+
+  .level-bar {
+    height: 100%;
+    border-radius: 6px;
+    transition: width 0.3s;
+  }
+
+  .level-high { background: var(--level-high); }
+  .level-mid { background: var(--level-mid); }
+  .level-low { background: var(--level-low); }
+
+  .meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
+  }
+
+  .meta span {
+    background: #f1f5f9;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  .threshold-warn {
+    font-size: 0.8rem;
+    color: var(--danger);
+    font-weight: 600;
+    margin-top: 4px;
+  }
+
+  .btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: background 0.2s;
+  }
+
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-success { background: var(--success); color: #fff; }
+  .btn-success:hover { background: var(--success-hover); }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-danger:hover { background: var(--danger-hover); }
+  .btn-warning { background: var(--warning); color: #fff; }
+  .btn-warning:hover { background: #d97706; }
+  .btn-outline {
+    background: transparent;
+    color: var(--primary);
+    border: 1px solid var(--primary);
+  }
+  .btn-outline:hover { background: #eff6ff; }
+
+  .btn-sm { padding: 4px 10px; font-size: 0.75rem; }
+  .btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .form-group {
+    margin-bottom: 14px;
+  }
+
+  .form-group label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--text);
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    background: var(--bg);
+  }
+
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+
+  .modal-overlay.active {
+    display: flex;
+  }
+
+  .modal {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 24px;
+    width: 100%;
+    max-width: 480px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+
+  .modal h2 {
+    font-size: 1.1rem;
+    margin-bottom: 16px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 16px;
+    color: var(--text-muted);
+  }
+
+  .empty-state .icon {
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+  }
+
+  .order-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .order-item:last-child { border-bottom: none; }
+
+  .order-item .info { flex: 1; }
+
+  .order-item .info h4 {
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .order-item .info p {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  .delivery-check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    background: #fefce8;
+    border: 1px solid #fde68a;
+  }
+
+  .delivery-check.delivered {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+  }
+
+  .delivery-check input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: var(--success);
+  }
+
+  .delivery-check .info { flex: 1; }
+
+  .delivery-check .info h4 {
+    font-size: 0.9rem;
+  }
+
+  .delivery-check .info p {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+  }
+
+  .supplier-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .supplier-card .details { flex: 1; }
+
+  .supplier-card h3 {
+    font-size: 1rem;
+    margin-bottom: 4px;
+  }
+
+  .supplier-card p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+  }
+
+  .search-bar {
+    margin-bottom: 16px;
+  }
+
+  .search-bar input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    background: var(--card);
+  }
+
+  .search-bar input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+  }
+
+  .add-btn {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-size: 1.8rem;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(37,99,235,0.4);
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+  }
+
+  .add-btn:hover { transform: scale(1.1); }
+
+  .summary-bar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .summary-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+  }
+
+  .summary-item .number {
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  .summary-item .label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  .summary-item.alert .number { color: var(--danger); }
+
+  @media (max-width: 500px) {
+    .form-row { grid-template-columns: 1fr; }
+    .summary-bar { grid-template-columns: repeat(3, 1fr); }
+    .summary-item .number { font-size: 1.2rem; }
+    .tab { font-size: 0.75rem; padding: 10px 4px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>在庫発注メモ</h1>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="items">消耗品リスト</div>
+  <div class="tab" data-tab="orders">発注予定<span class="badge" id="orderBadge" style="display:none">0</span></div>
+  <div class="tab" data-tab="delivery">納品チェック</div>
+  <div class="tab" data-tab="suppliers">購入先メモ</div>
+</div>
+
+<main>
+  <!-- 消耗品リスト -->
+  <div class="panel active" id="panel-items">
+    <div class="summary-bar">
+      <div class="summary-item">
+        <div class="number" id="totalItems">0</div>
+        <div class="label">全アイテム</div>
+      </div>
+      <div class="summary-item alert">
+        <div class="number" id="lowItems">0</div>
+        <div class="label">残量少</div>
+      </div>
+      <div class="summary-item">
+        <div class="number" id="okItems">0</div>
+        <div class="label">在庫十分</div>
+      </div>
+    </div>
+    <div class="search-bar">
+      <input type="text" id="searchItems" placeholder="アイテムを検索...">
+    </div>
+    <div id="itemList"></div>
+    <div class="empty-state" id="emptyItems">
+      <div class="icon">+</div>
+      <p>消耗品を追加してください</p>
+    </div>
+  </div>
+
+  <!-- 発注予定リスト -->
+  <div class="panel" id="panel-orders">
+    <div class="card" id="orderListCard">
+      <h3 style="margin-bottom: 12px;">発注が必要なアイテム</h3>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">
+        残量がしきい値以下のアイテムが自動表示されます
+      </p>
+      <div id="orderList"></div>
+      <div class="empty-state" id="emptyOrders" style="padding: 20px;">
+        <p>発注が必要なアイテムはありません</p>
+      </div>
+    </div>
+    <div style="margin-top: 12px;">
+      <button class="btn btn-primary" onclick="exportOrders()" style="width: 100%;">発注リストをコピー</button>
+    </div>
+  </div>
+
+  <!-- 納品チェック -->
+  <div class="panel" id="panel-delivery">
+    <div class="card">
+      <h3 style="margin-bottom: 12px;">発注済みアイテム</h3>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">
+        納品されたらチェックを入れてください。在庫が自動で更新されます。
+      </p>
+      <div id="deliveryList"></div>
+      <div class="empty-state" id="emptyDelivery" style="padding: 20px;">
+        <p>発注済みのアイテムはありません</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 購入先メモ -->
+  <div class="panel" id="panel-suppliers">
+    <div class="search-bar">
+      <input type="text" id="searchSuppliers" placeholder="購入先を検索...">
+    </div>
+    <div id="supplierList"></div>
+    <div class="empty-state" id="emptySuppliers">
+      <div class="icon">+</div>
+      <p>購入先を追加してください</p>
+    </div>
+  </div>
+</main>
+
+<button class="add-btn" id="addBtn" onclick="openAddModal()">+</button>
+
+<!-- アイテム追加/編集モーダル -->
+<div class="modal-overlay" id="itemModal">
+  <div class="modal">
+    <h2 id="itemModalTitle">消耗品を追加</h2>
+    <form id="itemForm" onsubmit="saveItem(event)">
+      <input type="hidden" id="editItemId">
+      <div class="form-group">
+        <label>品名 *</label>
+        <input type="text" id="itemName" required placeholder="例: コピー用紙 A4">
+      </div>
+      <div class="form-group">
+        <label>カテゴリ</label>
+        <input type="text" id="itemCategory" placeholder="例: 文房具、衛生用品">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>現在の残量 *</label>
+          <input type="number" id="itemQuantity" required min="0" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label>単位</label>
+          <input type="text" id="itemUnit" placeholder="例: 個, 箱, 本">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>最大在庫数</label>
+          <input type="number" id="itemMaxStock" min="1" placeholder="例: 100">
+        </div>
+        <div class="form-group">
+          <label>発注しきい値 *</label>
+          <input type="number" id="itemThreshold" required min="0" placeholder="例: 10">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>購入先</label>
+        <select id="itemSupplier">
+          <option value="">-- 選択してください --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>メモ</label>
+        <textarea id="itemNote" rows="2" placeholder="備考があれば記入"></textarea>
+      </div>
+      <div class="btn-group" style="justify-content: flex-end; margin-top: 8px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('itemModal')">キャンセル</button>
+        <button type="submit" class="btn btn-primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 購入先追加/編集モーダル -->
+<div class="modal-overlay" id="supplierModal">
+  <div class="modal">
+    <h2 id="supplierModalTitle">購入先を追加</h2>
+    <form id="supplierForm" onsubmit="saveSupplier(event)">
+      <input type="hidden" id="editSupplierId">
+      <div class="form-group">
+        <label>購入先名 *</label>
+        <input type="text" id="supplierName" required placeholder="例: Amazon, アスクル">
+      </div>
+      <div class="form-group">
+        <label>連絡先</label>
+        <input type="text" id="supplierContact" placeholder="例: 03-1234-5678">
+      </div>
+      <div class="form-group">
+        <label>URL</label>
+        <input type="url" id="supplierUrl" placeholder="例: https://www.example.com">
+      </div>
+      <div class="form-group">
+        <label>メモ</label>
+        <textarea id="supplierNote" rows="3" placeholder="納期、支払い条件など"></textarea>
+      </div>
+      <div class="btn-group" style="justify-content: flex-end; margin-top: 8px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('supplierModal')">キャンセル</button>
+        <button type="submit" class="btn btn-primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 発注モーダル -->
+<div class="modal-overlay" id="orderModal">
+  <div class="modal">
+    <h2>発注を記録</h2>
+    <form id="orderForm" onsubmit="placeOrder(event)">
+      <input type="hidden" id="orderItemId">
+      <div class="form-group">
+        <label>品名</label>
+        <input type="text" id="orderItemName" readonly>
+      </div>
+      <div class="form-group">
+        <label>発注数量 *</label>
+        <input type="number" id="orderQuantity" required min="1" placeholder="発注する数量">
+      </div>
+      <div class="form-group">
+        <label>発注日</label>
+        <input type="date" id="orderDate">
+      </div>
+      <div class="form-group">
+        <label>メモ</label>
+        <textarea id="orderNote" rows="2" placeholder="発注に関するメモ"></textarea>
+      </div>
+      <div class="btn-group" style="justify-content: flex-end; margin-top: 8px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('orderModal')">キャンセル</button>
+        <button type="submit" class="btn btn-primary">発注を記録</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// --- Data Store ---
+const STORAGE_KEY = 'inventory_app_data';
+
+function loadData() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) return JSON.parse(raw);
+  return { items: [], suppliers: [], orders: [] };
+}
+
+function saveData(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+let data = loadData();
+
+// --- Tab Navigation ---
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// --- Search ---
+document.getElementById('searchItems').addEventListener('input', () => renderItems());
+document.getElementById('searchSuppliers').addEventListener('input', () => renderSuppliers());
+
+// --- Modal helpers ---
+function openModal(id) {
+  document.getElementById(id).classList.add('active');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+}
+
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.classList.remove('active');
+  });
+});
+
+// --- Add button logic ---
+function openAddModal() {
+  const activeTab = document.querySelector('.tab.active').dataset.tab;
+  if (activeTab === 'suppliers') {
+    document.getElementById('supplierModalTitle').textContent = '購入先を追加';
+    document.getElementById('supplierForm').reset();
+    document.getElementById('editSupplierId').value = '';
+    openModal('supplierModal');
+  } else {
+    document.getElementById('itemModalTitle').textContent = '消耗品を追加';
+    document.getElementById('itemForm').reset();
+    document.getElementById('editItemId').value = '';
+    populateSupplierSelect();
+    openModal('itemModal');
+  }
+}
+
+// --- Supplier Functions ---
+function populateSupplierSelect() {
+  const sel = document.getElementById('itemSupplier');
+  sel.innerHTML = '<option value="">-- 選択してください --</option>';
+  data.suppliers.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.name;
+    sel.appendChild(opt);
+  });
+}
+
+function saveSupplier(e) {
+  e.preventDefault();
+  const id = document.getElementById('editSupplierId').value;
+  const supplier = {
+    id: id || Date.now().toString(),
+    name: document.getElementById('supplierName').value.trim(),
+    contact: document.getElementById('supplierContact').value.trim(),
+    url: document.getElementById('supplierUrl').value.trim(),
+    note: document.getElementById('supplierNote').value.trim(),
+  };
+
+  if (id) {
+    const idx = data.suppliers.findIndex(s => s.id === id);
+    if (idx >= 0) data.suppliers[idx] = supplier;
+  } else {
+    data.suppliers.push(supplier);
+  }
+
+  saveData(data);
+  closeModal('supplierModal');
+  renderSuppliers();
+}
+
+function editSupplier(id) {
+  const s = data.suppliers.find(x => x.id === id);
+  if (!s) return;
+  document.getElementById('supplierModalTitle').textContent = '購入先を編集';
+  document.getElementById('editSupplierId').value = s.id;
+  document.getElementById('supplierName').value = s.name;
+  document.getElementById('supplierContact').value = s.contact;
+  document.getElementById('supplierUrl').value = s.url;
+  document.getElementById('supplierNote').value = s.note;
+  openModal('supplierModal');
+}
+
+function deleteSupplier(id) {
+  if (!confirm('この購入先を削除しますか？')) return;
+  data.suppliers = data.suppliers.filter(s => s.id !== id);
+  saveData(data);
+  renderSuppliers();
+}
+
+function renderSuppliers() {
+  const query = document.getElementById('searchSuppliers').value.toLowerCase();
+  const list = document.getElementById('supplierList');
+  const filtered = data.suppliers.filter(s =>
+    s.name.toLowerCase().includes(query) ||
+    s.note.toLowerCase().includes(query)
+  );
+
+  document.getElementById('emptySuppliers').style.display = filtered.length ? 'none' : 'block';
+
+  list.innerHTML = filtered.map(s => `
+    <div class="card supplier-card">
+      <div class="details">
+        <h3>${esc(s.name)}</h3>
+        ${s.contact ? `<p>連絡先: ${esc(s.contact)}</p>` : ''}
+        ${s.url ? `<p><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.url)}</a></p>` : ''}
+        ${s.note ? `<p>${esc(s.note)}</p>` : ''}
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-outline btn-sm" onclick="editSupplier('${s.id}')">編集</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteSupplier('${s.id}')">削除</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// --- Item Functions ---
+function saveItem(e) {
+  e.preventDefault();
+  const id = document.getElementById('editItemId').value;
+  const item = {
+    id: id || Date.now().toString(),
+    name: document.getElementById('itemName').value.trim(),
+    category: document.getElementById('itemCategory').value.trim(),
+    quantity: parseInt(document.getElementById('itemQuantity').value) || 0,
+    unit: document.getElementById('itemUnit').value.trim(),
+    maxStock: parseInt(document.getElementById('itemMaxStock').value) || 100,
+    threshold: parseInt(document.getElementById('itemThreshold').value) || 0,
+    supplierId: document.getElementById('itemSupplier').value,
+    note: document.getElementById('itemNote').value.trim(),
+  };
+
+  if (id) {
+    const idx = data.items.findIndex(i => i.id === id);
+    if (idx >= 0) data.items[idx] = item;
+  } else {
+    data.items.push(item);
+  }
+
+  saveData(data);
+  closeModal('itemModal');
+  renderAll();
+}
+
+function editItem(id) {
+  const item = data.items.find(i => i.id === id);
+  if (!item) return;
+  document.getElementById('itemModalTitle').textContent = '消耗品を編集';
+  document.getElementById('editItemId').value = item.id;
+  document.getElementById('itemName').value = item.name;
+  document.getElementById('itemCategory').value = item.category;
+  document.getElementById('itemQuantity').value = item.quantity;
+  document.getElementById('itemUnit').value = item.unit;
+  document.getElementById('itemMaxStock').value = item.maxStock;
+  document.getElementById('itemThreshold').value = item.threshold;
+  document.getElementById('itemNote').value = item.note;
+  populateSupplierSelect();
+  document.getElementById('itemSupplier').value = item.supplierId || '';
+  openModal('itemModal');
+}
+
+function deleteItem(id) {
+  if (!confirm('このアイテムを削除しますか？')) return;
+  data.items = data.items.filter(i => i.id !== id);
+  data.orders = data.orders.filter(o => o.itemId !== id);
+  saveData(data);
+  renderAll();
+}
+
+function adjustQuantity(id, delta) {
+  const item = data.items.find(i => i.id === id);
+  if (!item) return;
+  item.quantity = Math.max(0, item.quantity + delta);
+  saveData(data);
+  renderAll();
+}
+
+function getLevelClass(quantity, maxStock) {
+  const ratio = quantity / maxStock;
+  if (ratio > 0.5) return 'level-high';
+  if (ratio > 0.2) return 'level-mid';
+  return 'level-low';
+}
+
+function renderItems() {
+  const query = document.getElementById('searchItems').value.toLowerCase();
+  const list = document.getElementById('itemList');
+  const filtered = data.items.filter(i =>
+    i.name.toLowerCase().includes(query) ||
+    i.category.toLowerCase().includes(query)
+  );
+
+  const lowCount = data.items.filter(i => i.quantity <= i.threshold).length;
+  const okCount = data.items.length - lowCount;
+
+  document.getElementById('totalItems').textContent = data.items.length;
+  document.getElementById('lowItems').textContent = lowCount;
+  document.getElementById('okItems').textContent = okCount;
+  document.getElementById('emptyItems').style.display = filtered.length ? 'none' : 'block';
+
+  const supplier = (id) => {
+    const s = data.suppliers.find(s => s.id === id);
+    return s ? s.name : '';
+  };
+
+  list.innerHTML = filtered.map(item => {
+    const pct = Math.min(100, Math.round((item.quantity / item.maxStock) * 100));
+    const lvl = getLevelClass(item.quantity, item.maxStock);
+    const belowThreshold = item.quantity <= item.threshold;
+    const hasOrder = data.orders.some(o => o.itemId === item.id && !o.delivered);
+
+    return `
+      <div class="card">
+        <div class="card-header">
+          <h3>${esc(item.name)}</h3>
+          <div class="btn-group">
+            <button class="btn btn-outline btn-sm" onclick="editItem('${item.id}')">編集</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteItem('${item.id}')">削除</button>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="flex:1;">
+            <div class="level-bar-container">
+              <div class="level-bar ${lvl}" style="width:${pct}%"></div>
+            </div>
+          </div>
+          <div style="font-weight:700; font-size:0.95rem; min-width: 80px; text-align: right;">
+            ${item.quantity} / ${item.maxStock} ${esc(item.unit)}
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; margin-top: 8px;">
+          <button class="btn btn-outline btn-sm" onclick="adjustQuantity('${item.id}', -1)">-1</button>
+          <button class="btn btn-outline btn-sm" onclick="adjustQuantity('${item.id}', 1)">+1</button>
+          <button class="btn btn-outline btn-sm" onclick="adjustQuantity('${item.id}', -5)">-5</button>
+          <button class="btn btn-outline btn-sm" onclick="adjustQuantity('${item.id}', 5)">+5</button>
+          ${belowThreshold && !hasOrder ? `<button class="btn btn-warning btn-sm" onclick="openOrderModal('${item.id}')">発注</button>` : ''}
+          ${hasOrder ? '<span style="font-size:0.75rem; color:var(--warning); font-weight:600;">発注済</span>' : ''}
+        </div>
+        ${belowThreshold ? '<div class="threshold-warn">残量がしきい値（' + item.threshold + ' ' + esc(item.unit) + '）以下です</div>' : ''}
+        <div class="meta">
+          ${item.category ? `<span>${esc(item.category)}</span>` : ''}
+          ${item.supplierId ? `<span>購入先: ${esc(supplier(item.supplierId))}</span>` : ''}
+          ${item.note ? `<span>${esc(item.note)}</span>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// --- Order Functions ---
+function openOrderModal(itemId) {
+  const item = data.items.find(i => i.id === itemId);
+  if (!item) return;
+  document.getElementById('orderItemId').value = itemId;
+  document.getElementById('orderItemName').value = item.name;
+  document.getElementById('orderQuantity').value = item.maxStock - item.quantity;
+  document.getElementById('orderDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('orderNote').value = '';
+  openModal('orderModal');
+}
+
+function placeOrder(e) {
+  e.preventDefault();
+  const order = {
+    id: Date.now().toString(),
+    itemId: document.getElementById('orderItemId').value,
+    quantity: parseInt(document.getElementById('orderQuantity').value),
+    date: document.getElementById('orderDate').value,
+    note: document.getElementById('orderNote').value.trim(),
+    delivered: false,
+    deliveredDate: null,
+  };
+  data.orders.push(order);
+  saveData(data);
+  closeModal('orderModal');
+  renderAll();
+}
+
+function renderOrders() {
+  const needsOrder = data.items.filter(i => i.quantity <= i.threshold);
+  const badge = document.getElementById('orderBadge');
+  badge.textContent = needsOrder.length;
+  badge.style.display = needsOrder.length > 0 ? 'inline-block' : 'none';
+
+  const list = document.getElementById('orderList');
+  document.getElementById('emptyOrders').style.display = needsOrder.length ? 'none' : 'block';
+
+  const supplier = (id) => {
+    const s = data.suppliers.find(s => s.id === id);
+    return s ? s.name : '未設定';
+  };
+
+  list.innerHTML = needsOrder.map(item => {
+    const hasOrder = data.orders.some(o => o.itemId === item.id && !o.delivered);
+    return `
+      <div class="order-item">
+        <div class="info">
+          <h4>${esc(item.name)}</h4>
+          <p>残量: ${item.quantity} ${esc(item.unit)} / しきい値: ${item.threshold} ${esc(item.unit)}</p>
+          <p>購入先: ${esc(supplier(item.supplierId))}</p>
+        </div>
+        ${hasOrder
+          ? '<span style="font-size:0.8rem; color:var(--success); font-weight:600;">発注済</span>'
+          : `<button class="btn btn-warning btn-sm" onclick="openOrderModal('${item.id}')">発注する</button>`
+        }
+      </div>
+    `;
+  }).join('');
+}
+
+// --- Delivery Functions ---
+function deliverOrder(orderId) {
+  const order = data.orders.find(o => o.id === orderId);
+  if (!order) return;
+  order.delivered = true;
+  order.deliveredDate = new Date().toISOString().split('T')[0];
+
+  const item = data.items.find(i => i.id === order.itemId);
+  if (item) {
+    item.quantity = Math.min(item.maxStock, item.quantity + order.quantity);
+  }
+
+  saveData(data);
+  renderAll();
+}
+
+function undoDelivery(orderId) {
+  const order = data.orders.find(o => o.id === orderId);
+  if (!order) return;
+
+  const item = data.items.find(i => i.id === order.itemId);
+  if (item) {
+    item.quantity = Math.max(0, item.quantity - order.quantity);
+  }
+
+  order.delivered = false;
+  order.deliveredDate = null;
+  saveData(data);
+  renderAll();
+}
+
+function deleteOrder(orderId) {
+  if (!confirm('この発注記録を削除しますか？')) return;
+  data.orders = data.orders.filter(o => o.id !== orderId);
+  saveData(data);
+  renderAll();
+}
+
+function renderDelivery() {
+  const pending = data.orders.filter(o => !o.delivered);
+  const recent = data.orders.filter(o => o.delivered).slice(-10).reverse();
+  const all = [...pending, ...recent];
+
+  document.getElementById('emptyDelivery').style.display = all.length ? 'none' : 'block';
+
+  const list = document.getElementById('deliveryList');
+  list.innerHTML = all.map(order => {
+    const item = data.items.find(i => i.id === order.itemId);
+    const name = item ? item.name : '(削除済み)';
+    const unit = item ? item.unit : '';
+
+    return `
+      <div class="delivery-check ${order.delivered ? 'delivered' : ''}">
+        <input type="checkbox" ${order.delivered ? 'checked' : ''}
+          onchange="${order.delivered ? `undoDelivery('${order.id}')` : `deliverOrder('${order.id}')`}">
+        <div class="info">
+          <h4>${esc(name)}</h4>
+          <p>発注数: ${order.quantity} ${esc(unit)} | 発注日: ${order.date || '未設定'}
+            ${order.delivered ? ' | 納品日: ' + order.deliveredDate : ''}
+          </p>
+          ${order.note ? `<p>${esc(order.note)}</p>` : ''}
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="deleteOrder('${order.id}')">削除</button>
+      </div>
+    `;
+  }).join('');
+}
+
+// --- Export ---
+function exportOrders() {
+  const needsOrder = data.items.filter(i => i.quantity <= i.threshold);
+  if (needsOrder.length === 0) {
+    alert('発注が必要なアイテムはありません。');
+    return;
+  }
+
+  const supplier = (id) => {
+    const s = data.suppliers.find(s => s.id === id);
+    return s ? s.name : '未設定';
+  };
+
+  const lines = ['【発注予定リスト】', `作成日: ${new Date().toLocaleDateString('ja-JP')}`, ''];
+  needsOrder.forEach((item, i) => {
+    const suggested = item.maxStock - item.quantity;
+    lines.push(`${i + 1}. ${item.name}`);
+    lines.push(`   残量: ${item.quantity} ${item.unit} / しきい値: ${item.threshold} ${item.unit}`);
+    lines.push(`   推奨発注数: ${suggested} ${item.unit}`);
+    lines.push(`   購入先: ${supplier(item.supplierId)}`);
+    if (item.note) lines.push(`   メモ: ${item.note}`);
+    lines.push('');
+  });
+
+  const text = lines.join('\n');
+  navigator.clipboard.writeText(text).then(() => {
+    alert('発注リストをクリップボードにコピーしました。');
+  }).catch(() => {
+    prompt('コピーに失敗しました。手動でコピーしてください:', text);
+  });
+}
+
+// --- Utility ---
+function esc(str) {
+  if (!str) return '';
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+// --- Render All ---
+function renderAll() {
+  renderItems();
+  renderOrders();
+  renderDelivery();
+  renderSuppliers();
+}
+
+renderAll();
+</script>
+
+</body>
+</html>
